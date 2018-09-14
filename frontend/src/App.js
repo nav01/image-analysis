@@ -30,7 +30,7 @@ const particlesOptions = {
 const initialState = {
   input: '',
   imageUrl: '',
-  box: {},
+  boxes: [],
   route: 'signin',
   isSignedIn: false,
   user: {
@@ -57,21 +57,25 @@ class App extends Component {
       joined: data.joined,
     }});
   }
-  calculateFaceLocation = (data) => {
-    const face = data.outputs[0].data.regions[0].region_info.bounding_box;
+  calculateFaceLocations = (data) => {
+    const faces = data.outputs[0].data.regions; //[0].region_info.bounding_box;
     const image = document.getElementById('inputImage');
     const width = Number(image.width);
     const height = Number(image.height);
-    return {
-      left: face.left_col * width,
-      topRow: face.top_row * height,
-      right: width - (face.right_col * width),
-      bottomRow: height - (face.bottom_row * height),
-    };
+    return faces.map((f, i) => {
+      let face = f.region_info.bounding_box;
+      return {
+        key: i,
+        left: face.left_col * width,
+        topRow: face.top_row * height,
+        right: width - (face.right_col * width),
+        bottomRow: height - (face.bottom_row * height),
+      };
+    });
   }
 
-  displayFaceBox = (box) => {
-      this.setState({box})
+  displayFaceBoxes = (boxes) => {
+      this.setState({boxes})
   }
 
   onInputChange = (event) => {
@@ -103,7 +107,7 @@ class App extends Component {
         })
         .catch(console.log);
       }
-      this.displayFaceBox(this.calculateFaceLocation(response))
+      this.displayFaceBoxes(this.calculateFaceLocations(response))
     })
     .catch( err => console.log(err));
   };
@@ -132,7 +136,7 @@ class App extends Component {
                 onInputChange={this.onInputChange}
                 onButtonSubmit={this.onButtonSubmit}
               />
-              <FaceRecognition box={this.state.box} imageUrl={this.state.imageUrl}/>
+            <FaceRecognition boxes={this.state.boxes} imageUrl={this.state.imageUrl}/>
             </div>
           : (
               this.state.route === 'signin'
