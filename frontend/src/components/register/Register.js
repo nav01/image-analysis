@@ -10,7 +10,6 @@ class Register extends React.Component {
     }
   }
 
-
   onEmailChange = (event) => {
     this.setState({email: event.target.value})
   };
@@ -24,7 +23,7 @@ class Register extends React.Component {
   };
 
   onSubmitRegister = () => {
-    fetch('https://glacial-earth-45714.herokuapp.com/register', {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/register`, {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({

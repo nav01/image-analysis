@@ -17,7 +17,7 @@ class SignIn extends React.Component {
   };
 
   onSubmitSignIn = () => {
-    fetch('https://glacial-earth-45714.herokuapp.com//signin', {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/signin`, {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
