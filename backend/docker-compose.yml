@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+  backend-api:
+    container_name: backend
+    build: ./
+    command: npm start
+    working_dir: /usr/src/image-analysis-api
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_PORTS}"
+    volumes:
+      - ./:/usr/src/image-analysis-api
+
+  postgres:
+    env_file:
+      - .env
+    build: ./postgres
+    ports:
+      - "${POSTGRES_PORTS}"
