@@ -19,3 +19,8 @@ services:
     build: ./postgres
     ports:
       - "${POSTGRES_PORTS}"
+
+  redis:
+    image: redis
+    env_file:
+      - .env

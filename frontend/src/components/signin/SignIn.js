@@ -16,6 +16,10 @@ class SignIn extends React.Component {
     this.setState({signInPassword: event.target.value});
   };
 
+  saveAuthTokenInSession = (token) => {
+    window.localStorage.setItem('token', token)
+  }
+
   onSubmitSignIn = () => {
     fetch(`${process.env.REACT_APP_BACKEND_URL}/signin`, {
       method: 'post',
@@ -27,7 +31,8 @@ class SignIn extends React.Component {
     })
     .then(response => response.json())
     .then(user => {
-      if (user.id){
+      if (user.id && user.success === 'true'){
+        this.saveAuthTokenInSession(user.token);
         this.props.loadUser(user);
         this.props.onRouteChange('home');
       }

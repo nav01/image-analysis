@@ -8,12 +8,10 @@ import Particles from 'react-particles-js';
 import Rank from './components/rank/Rank';
 import Register from './components/register/Register';
 import SignIn from './components/signin/SignIn';
-
-import 'tachyons';
+import Modal from './components/modal/Modal';
+import Profile from './components/profile/Profile';
 
 import './App.css';
-
-
 
 const particlesOptions = {
   particles: {
@@ -31,8 +29,9 @@ const initialState = {
   input: '',
   imageUrl: '',
   boxes: [],
-  route: 'signin',
-  isSignedIn: false,
+  route: 'signin', // CHANGE BEFORE PUSH
+  isSignedIn: false, //CHANGE BEFORE PUSH
+  isProfileOpen: false,
   user: {
     id: '',
     name: '',
@@ -48,6 +47,38 @@ class App extends Component {
     this.state = initialState;
   }
 
+  componentDidMount() {
+    const token = window.localStorage.getItem('token');
+    if (token) {
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/signin`, {
+        method: 'post',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        }
+      })
+      .then(resp => resp.json())
+      .then(userId => {
+        if (userId && userId.id)
+          fetch(`${process.env.REACT_APP_BACKEND_URL}/profile/${userId.id}`, {
+            method: 'get',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token,
+            }
+          })
+          .then(resp => resp.json())
+          .then(user => {
+              if (user) {
+                this.loadUser(user)
+                this.onRouteChange('home');
+              }
+          })
+      })
+      .catch(console.log);
+    }
+  }
+
   loadUser = (data) => {
     this.setState({user: {
       id: data.id,
@@ -58,23 +89,26 @@ class App extends Component {
     }});
   }
   calculateFaceLocations = (data) => {
-    const faces = data.outputs[0].data.regions; //[0].region_info.bounding_box;
-    const image = document.getElementById('inputImage');
-    const width = Number(image.width);
-    const height = Number(image.height);
-    return faces.map((f, i) => {
-      let face = f.region_info.bounding_box;
-      return {
-        key: i,
-        left: face.left_col * width,
-        topRow: face.top_row * height,
-        right: width - (face.right_col * width),
-        bottomRow: height - (face.bottom_row * height),
-      };
-    });
+    if (data && data.outputs) {
+      const faces = data.outputs[0].data.regions; //[0].region_info.bounding_box;
+      const image = document.getElementById('inputImage');
+      const width = Number(image.width);
+      const height = Number(image.height);
+      return faces.map((f, i) => {
+        let face = f.region_info.bounding_box;
+        return {
+          key: i,
+          left: face.left_col * width,
+          topRow: face.top_row * height,
+          right: width - (face.right_col * width),
+          bottomRow: height - (face.bottom_row * height),
+        };
+      });
+    }
   }
 
-  displayFaceBoxes = (boxes) => {
+  displayFaceBoxes = (boxes = null) => {
+    if (boxes)
       this.setState({boxes})
   }
 
@@ -86,7 +120,10 @@ class App extends Component {
     this.setState({imageUrl: this.state.input});
     fetch(`${process.env.REACT_APP_BACKEND_URL}/imageurl`, {
       method: 'post',
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': window.localStorage.getItem('token'),
+      },
       body: JSON.stringify({
         input: this.state.input,
       })
@@ -96,7 +133,10 @@ class App extends Component {
       if (response) {
         fetch(`${process.env.REACT_APP_BACKEND_URL}/image`, {
           method: 'put',
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': window.localStorage.getItem('token'),
+          },
           body: JSON.stringify({
             id: this.state.user.id
           })
@@ -114,11 +154,27 @@ class App extends Component {
 
   onRouteChange = (route) => {
     if (route === 'signout') {
-        this.setState(initialState);
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/signout`, {
+          method: 'post',
+          headers: {
+            'Authorization': window.localStorage.getItem('token'),
+          }
+        })
+        .then(resp => resp.json())
+        .then(logout => {
+          if (logout.success === 'true')
+            return this.setState(initialState);
+        })
     } else if (route === 'home') {
       this.setState({isSignedIn: true});
     }
     this.setState({route: route});
+  }
+
+  toggleModal = () => {
+    this.setState(prevState => ({
+      isProfileOpen: !prevState.isProfileOpen
+    }));
   }
 
   render() {
@@ -127,7 +183,17 @@ class App extends Component {
       <Particles className='particles'
             params={particlesOptions}
         />
-        <Navigation isSignedIn={this.state.isSignedIn} onRouteChange={this.onRouteChange}/>
+        <Navigation isSignedIn={this.state.isSignedIn} onRouteChange={this.onRouteChange} toggleModal={this.toggleModal}/>
+          {this.state.isProfileOpen &&
+            <Modal>
+              <Profile 
+                user={this.state.user} 
+                isProfileOpen={this.state.isProfileOpen} 
+                toggleModal={this.toggleModal} 
+                loadUser={this.loadUser} />
+              {'Hello'}
+            </Modal>
+          }
         { this.state.route === 'home'
           ? <div>
               <Logo />
