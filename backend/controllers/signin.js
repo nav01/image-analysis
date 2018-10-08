@@ -1,7 +1,4 @@
-const jwt = require('jsonwebtoken');
-const redis = require('redis');
-
-const redisClient = redis.createClient(process.env.REDIS_URI);
+const session = require('./session');
 
 const handleSignin = (req, res, db, bcrypt) => {
   const {email, password} = req.body;
@@ -22,51 +19,20 @@ const handleSignin = (req, res, db, bcrypt) => {
     .catch(err => Promise.reject('wrong credentials'));
 }
 
-const getAuthTokenId = (req,res) => {
-  const {authorization} = req.headers;
-  redisClient.get(authorization, (err, reply) => {
-    if (err || !reply)
-      return res.status(400).json('Unauthorized.');
-    else
-      return res.json({id: reply});
-  })
-}
-
-const signToken = (email) => {
-  const jwtPayload = {email};
-  return jwt.sign(jwtPayload, process.env.JWT_SECRET)
-}
-
-const setToken = (token, id) => {
-  return Promise.resolve(redisClient.set(token, id));
-}
-
-const createSession = (user) => {
-  const {email, id, name, entries, joined} = user;
-  const token = signToken(email);
-  return setToken(token, id)
-    .then(() => {
-      console.log('success')
-      return {success: 'true', id, name, entries, joined, token}
-    })
-    .catch(() => console.log('problem'));
-}
-
 const signinAuth = (db, bcrypt) => (req, res) => {
   const {authorization} = req.headers;
-  return authorization ? getAuthTokenId(req, res) : 
+  return authorization ? session.getAuthTokenId(req, res) : 
     handleSignin(req, res, db, bcrypt)
       .then(data => {
         if (data.id && data.email)
-          return createSession(data)
+          return session.createSession(data)
         else 
           Promise.reject(data)
       })
       .then(session => res.json(session))
-      .catch(err => res.status(400).json(err));
+      .catch(err => res.status(400).json('unable to sign in'));
 }
 
 module.exports = {
   signinAuth,
-  redisClient,
 }

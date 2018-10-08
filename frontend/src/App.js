@@ -10,6 +10,8 @@ import Register from './components/register/Register';
 import SignIn from './components/signin/SignIn';
 import Modal from './components/modal/Modal';
 import Profile from './components/profile/Profile';
+import {cFetchToJson} from './customFetch';
+import {ROUTES, SESSION_TOKEN} from './constants';
 
 import './App.css';
 
@@ -29,8 +31,8 @@ const initialState = {
   input: '',
   imageUrl: '',
   boxes: [],
-  route: 'signin', // CHANGE BEFORE PUSH
-  isSignedIn: false, //CHANGE BEFORE PUSH
+  route: ROUTES.SIGNIN,
+  isSignedIn: false,
   isProfileOpen: false,
   user: {
     id: '',
@@ -48,35 +50,18 @@ class App extends Component {
   }
 
   componentDidMount() {
-    const token = window.localStorage.getItem('token');
-    if (token) {
-      fetch(`${process.env.REACT_APP_BACKEND_URL}/signin`, {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token,
-        }
-      })
-      .then(resp => resp.json())
-      .then(userId => {
-        if (userId && userId.id)
-          fetch(`${process.env.REACT_APP_BACKEND_URL}/profile/${userId.id}`, {
-            method: 'get',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token,
+    cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/signin`, 'post', true)
+    .then(userId => {
+      if (userId && userId.id)
+        cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/profile/${userId.id}`, 'get', true)
+        .then(user => {
+            if (user) {
+              this.loadUser(user)
+              this.onRouteChange(ROUTES.HOME);
             }
-          })
-          .then(resp => resp.json())
-          .then(user => {
-              if (user) {
-                this.loadUser(user)
-                this.onRouteChange('home');
-              }
-          })
-      })
-      .catch(console.log);
-    }
+        })
+    })
+    .catch(err => console.log(err.toString()));
   }
 
   loadUser = (data) => {
@@ -88,6 +73,7 @@ class App extends Component {
       joined: data.joined,
     }});
   }
+
   calculateFaceLocations = (data) => {
     if (data && data.outputs) {
       const faces = data.outputs[0].data.regions; //[0].region_info.bounding_box;
@@ -118,30 +104,13 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input});
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/imageurl`, {
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': window.localStorage.getItem('token'),
-      },
-      body: JSON.stringify({
-        input: this.state.input,
-      })
-    })
-    .then(response => response.json())
+    let body = {input: this.state.input};
+    console.log(body);
+    cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/imageurl`, 'post', true, body)
     .then(response => {
       if (response) {
-        fetch(`${process.env.REACT_APP_BACKEND_URL}/image`, {
-          method: 'put',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': window.localStorage.getItem('token'),
-          },
-          body: JSON.stringify({
-            id: this.state.user.id
-          })
-        })
-        .then(response => response.json())
+        let body = {id: this.state.user.id};
+        cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/image`, 'put', true, body)
         .then(count => {
           this.setState(Object.assign(this.state.user, {entries: count}))
         })
@@ -152,20 +121,21 @@ class App extends Component {
     .catch( err => console.log(err));
   };
 
+  signout = () => {
+    cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/signout`, 'post', true)
+    .then(logout => {
+      if (logout.success) {
+        window.localStorage.removeItem(SESSION_TOKEN);
+        return this.setState(initialState);
+      }
+    })
+    .catch(err => alert('Problem signing out. You may already be signed out. Refresh the page or try again.'))
+  }
+
   onRouteChange = (route) => {
-    if (route === 'signout') {
-        fetch(`${process.env.REACT_APP_BACKEND_URL}/signout`, {
-          method: 'post',
-          headers: {
-            'Authorization': window.localStorage.getItem('token'),
-          }
-        })
-        .then(resp => resp.json())
-        .then(logout => {
-          if (logout.success === 'true')
-            return this.setState(initialState);
-        })
-    } else if (route === 'home') {
+    if (route === ROUTES.SIGNOUT) {
+      return this.signout();
+    } else if (route === ROUTES.HOME) {
       this.setState({isSignedIn: true});
     }
     this.setState({route: route});
@@ -194,7 +164,7 @@ class App extends Component {
               {'Hello'}
             </Modal>
           }
-        { this.state.route === 'home'
+        { this.state.route === ROUTES.HOME
           ? <div>
               <Logo />
               <Rank name={this.state.user.name} entries={this.state.user.entries}/>
@@ -205,7 +175,7 @@ class App extends Component {
             <FaceRecognition boxes={this.state.boxes} imageUrl={this.state.imageUrl}/>
             </div>
           : (
-              this.state.route === 'signin'
+              this.state.route === ROUTES.SIGNIN
               ? <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
               : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
           )

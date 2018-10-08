@@ -1,5 +1,8 @@
 import React from 'react'
 
+import {cFetchToJson} from '../../customFetch';
+import {ROUTES, SESSION_TOKEN} from '../../constants';
+
 class Register extends React.Component {
   constructor(props) {
     super(props);
@@ -23,20 +26,17 @@ class Register extends React.Component {
   };
 
   onSubmitRegister = () => {
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/register`, {
-      method: 'post',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        name: this.state.name,
-        email: this.state.email,
-        password: this.state.password,
-      }),
-    })
-    .then(response => response.json())
+    const body = {
+      name: this.state.name,
+      email: this.state.email,
+      password: this.state.password,
+    }
+    cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/register`, 'post', false, body)
     .then(user => {
       if (user.id) {
+        window.localStorage.setItem(SESSION_TOKEN, user.token);
         this.props.loadUser(user);
-        this.props.onRouteChange('home');
+        this.props.onRouteChange(ROUTES.HOME);
       }
     })
   };

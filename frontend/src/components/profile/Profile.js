@@ -1,5 +1,8 @@
 import React from 'react';
-import './Profile.css'
+
+import './Profile.css';
+import {cFetch} from '../../customFetch';
+
 
 class Profile extends React.Component {
   constructor(props) {
@@ -15,14 +18,8 @@ class Profile extends React.Component {
   }
 
   updateUser = (data) => {
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/profile/${this.props.user.id}`, {
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': window.localStorage.getItem('token'),
-      },
-      body: JSON.stringify(data)
-    }).then(resp => {
+    cFetch(`${process.env.REACT_APP_BACKEND_URL}/profile/${this.props.user.id}`, 'post', true, data)
+    .then(resp => {
       if (resp.status === 200 || resp.status === 304){
         this.props.toggleModal();
         this.props.loadUser({...this.props.user, ...data})

@@ -1,5 +1,8 @@
 import React from 'react'
 
+import {ROUTES, SESSION_TOKEN} from '../../constants';
+import {cFetchToJson} from '../../customFetch';
+
 class SignIn extends React.Component {
   constructor(props) {
     super(props);
@@ -9,32 +12,24 @@ class SignIn extends React.Component {
     }
   }
   onEmailChange = (event) => {
-    this.setState({signInEmail: event.target.value})
+    this.setState({signInEmail: event.target.value});
   };
 
   onPasswordChange = (event) => {
     this.setState({signInPassword: event.target.value});
   };
 
-  saveAuthTokenInSession = (token) => {
-    window.localStorage.setItem('token', token)
-  }
-
   onSubmitSignIn = () => {
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/signin`, {
-      method: 'post',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        email: this.state.signInEmail,
-        password: this.state.signInPassword,
-      }),
-    })
-    .then(response => response.json())
+    const body = {
+      email: this.state.signInEmail,
+      password: this.state.signInPassword,
+    }
+    cFetchToJson(`${process.env.REACT_APP_BACKEND_URL}/signin`, 'post', false, body)
     .then(user => {
       if (user.id && user.success === 'true'){
-        this.saveAuthTokenInSession(user.token);
+        window.localStorage.setItem(SESSION_TOKEN, user.token)
         this.props.loadUser(user);
-        this.props.onRouteChange('home');
+        this.props.onRouteChange(ROUTES.HOME);
       }
     })
   };
@@ -76,7 +71,7 @@ class SignIn extends React.Component {
                 value="Sign in"/>
             </div>
             <div className="lh-copy mt3">
-              <p onClick={() => onRouteChange('register')} className="f6 link dim black db pointer">Register</p>
+              <p onClick={() => onRouteChange(ROUTES.REGISTER)} className="f6 link dim black db pointer">Register</p>
             </div>
           </div>
         </main>
